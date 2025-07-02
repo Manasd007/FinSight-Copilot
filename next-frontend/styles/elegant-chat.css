@@ -1,0 +1,158 @@
+header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+body {
+  background: linear-gradient(120deg, #f7f8fa 0%, #f9fafb 100%);
+  font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+  color: #222;
+  animation: fadeInBody 0.7s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes fadeInBody {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.elegant-container {
+  min-height: 100vh;
+  background: linear-gradient(120deg, #f7f8fa 0%, #f9fafb 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.elegant-main {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  gap: 2.5rem;
+}
+
+.elegant-sidebar {
+  width: 270px;
+  background: linear-gradient(135deg, #fff 60%, #f3f6fb 100%);
+  border-right: 1px solid #ececec;
+  box-shadow: 2px 0 16px rgba(30,58,138,0.04);
+  border-top-right-radius: 28px;
+  border-bottom-right-radius: 28px;
+  padding: 2.5rem 1.5rem 1.5rem 1.5rem;
+  margin-top: 24px;
+  margin-bottom: 24px;
+  margin-left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  min-height: 80vh;
+  animation: slideInSidebar 0.7s cubic-bezier(.4,0,.2,1);
+}
+@keyframes slideInSidebar {
+  from { transform: translateX(-40px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.elegant-features-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.elegant-features-list li {
+  padding: 0.85rem 1.2rem;
+  border-radius: 12px;
+  font-weight: 500;
+  color: #3b3a36;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s, box-shadow 0.18s, transform 0.18s;
+  box-shadow: 0 1px 4px rgba(30,58,138,0.03);
+  border: 1px solid transparent;
+  font-size: 1.08rem;
+}
+.elegant-features-list li:hover, .elegant-features-list li.active {
+  background: linear-gradient(90deg, #f0f4ff 60%, #e6eaff 100%);
+  color: #1e3a8a;
+  box-shadow: 0 2px 8px rgba(59,130,246,0.08);
+  border-color: #c7d2fe;
+  transform: scale(1.02);
+  animation: pulseFeature 2.5s ease-in-out infinite alternate;
+}
+@keyframes pulseFeature {
+  from { box-shadow: 0 2px 8px rgba(59,130,246,0.06); }
+  to { box-shadow: 0 6px 18px rgba(59,130,246,0.10); }
+}
+
+.elegant-chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 3.5rem 0 2rem 0;
+  position: relative;
+  z-index: 1;
+}
+
+.elegant-chat-card {
+  width: 100%;
+  max-width: 720px;
+  background: linear-gradient(120deg, #fff 80%, #f7f8fa 100%);
+  border-radius: 32px;
+  box-shadow: 0 8px 40px rgba(30,58,138,0.10);
+  padding: 2.5rem 2.5rem 1.5rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 64vh;
+  border: 1.5px solid #f0f4ff;
+  transition: box-shadow 0.18s;
+  animation: popInCard 0.7s cubic-bezier(.4,0,.2,1);
+  position: relative;
+  border-image: linear-gradient(120deg, #3b82f6 0%, #a5b4fc 100%) 1;
+  animation: borderGlow 4s ease-in-out infinite alternate;
+}
+.elegant-chat-card:focus-within, .elegant-chat-card:hover {
+  box-shadow: 0 12px 48px rgba(59,130,246,0.13);
+  border-color: #a5b4fc;
+}
+@keyframes popInCard {
+  from { transform: scale(0.97) translateY(30px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes borderGlow {
+  0% { box-shadow: 0 8px 40px rgba(30,58,138,0.10), 0 0 0 0 #3b82f6; }
+  100% { box-shadow: 0 8px 40px rgba(30,58,138,0.13), 0 0 10px 1px #a5b4fc; }
+}
+
+.send-button, .bg-blue-600 {
+  box-shadow: 0 0 0 0 #3b82f6;
+  animation: sendGlow 3s ease-in-out infinite alternate;
+}
+@keyframes sendGlow {
+  0% { box-shadow: 0 0 0 0 #3b82f6; }
+  100% { box-shadow: 0 0 8px 1px #3b82f6; }
+}
+
+/* Animated background for user messages */
+.bg-blue-600 {
+  background: linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%);
+  background-size: 200% 200%;
+  animation: userBubbleMove 6s ease-in-out infinite alternate;
+}
+@keyframes userBubbleMove {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+/* Digital grid overlay for chat area */
+.elegant-chat-area::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.08;
+  background-image: linear-gradient(to right, #3b82f6 1px, transparent 1px), linear-gradient(to bottom, #3b82f6 1px, transparent 1px);
+  background-size: 32px 32px;
+} 
