@@ -75,3 +75,6 @@ models/
 # Temporary files
 *.tmp
 *.temp 
+
+# Temporary uploads
+backend/temp_uploads/ 

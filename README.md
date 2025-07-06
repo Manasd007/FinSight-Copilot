@@ -165,6 +165,28 @@ python data_exploration.py
 - **UI**: Streamlit, Gradio
 - **Models**: Local quantized LLMs (llama.cpp, Hugging Face)
 
+## 🔍 FAISS Index Management
+
+All backend code uses a centralized utility function `get_faiss_index_dir()` (in `backend/finsight_app/path_utils.py`) to resolve the FAISS vector index directory:
+
+- **Directory:** `embeddings/finsight_index/`
+- **Index file:** `embeddings/finsight_index/index.faiss`
+- **Chunk mapping:** `embeddings/finsight_index/chunk_mapping.pkl`
+
+This ensures:
+- No hardcoded or conflicting paths
+- The app works from both the project root and backend/ directories
+- Easy debugging and onboarding for new contributors
+
+**Example usage:**
+```python
+from finsight_app.path_utils import get_faiss_index_dir
+faiss_index_path = get_faiss_index_dir()
+index_file_path = os.path.join(faiss_index_path, "index.faiss")
+```
+
+> Always use this utility for any code that reads or writes the FAISS index or chunk mapping files.
+
 ## 🎯 Current Capabilities
 
 ### ✅ What's Working Now
