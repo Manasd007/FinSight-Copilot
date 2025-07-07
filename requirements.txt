@@ -45,4 +45,10 @@ flake8>=6.0.0
 # Added from the code block
 fastapi
 uvicorn
-llama-cpp-python==0.1.83 
+llama-cpp-python==0.1.83
+
+# New additions
+google-generativeai
+scikit-learn
+sqlalchemy
+py2neo 

@@ -334,3 +334,8 @@ app.include_router(chat_history_router)
 
 # ==== Trading Route ====
 app.include_router(trading_router)
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="debug")
