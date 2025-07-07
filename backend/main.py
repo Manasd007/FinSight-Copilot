@@ -19,6 +19,8 @@ from finsight_app.prompts import FinSightPrompts, PromptType, PromptConfig
 from finsight_app.rag_utils import RetrievalSystem
 from finsight_app.upload import router as upload_router
 from finsight_app.path_utils import get_faiss_index_dir
+from routes.chat_history import router as chat_history_router
+from routes.trading import router as trading_router
 
 
 # ==== FastAPI Init ====
@@ -43,27 +45,24 @@ print(f"✅ FAISS index found at: {index_file_path}")
 vectorstore = FAISS.load_local(faiss_index_path, embeddings=embedding_model, allow_dangerous_deserialization=True)
 retriever = RetrievalSystem(vectorstore=vectorstore)
 
-# ==== Load Local LLaMA Model ====
-# ✅ Get absolute path to the root directory (finsight-copilot)
-ROOT_DIR = os.path.abspath(os.path.dirname(__file__))  # backend/
-ROOT_DIR = os.path.abspath(os.path.join(ROOT_DIR, ".."))  # now at finsight-copilot/
+# ==== Load Local Hugging Face LLM Engine ====
+from finsight_app.local_hf_engine import LocalHuggingFaceEngine
 
-# ✅ Path to the model
-MODEL_PATH = os.path.join(ROOT_DIR, "models", "llama-2-7b-chat.Q2_K.gguf")
-
-# ✅ Check and print
-assert os.path.exists(MODEL_PATH), f"❌ Model file not found at {MODEL_PATH}"
-print(f"✅ Model path found: {MODEL_PATH}")
-
-# ✅ Load the model
-llm = Llama(
-    model_path=MODEL_PATH,
-    n_ctx=1024,  # Reduced context for faster processing
-    n_threads=4,  # Reduced threads for better performance
-    temperature=0.1,  # Lower temperature for more focused responses
-    n_gpu_layers=0,  # Force CPU to avoid GPU issues
-    n_batch=256  # Smaller batch size for faster processing
-)
+# ✅ Initialize Local Hugging Face LLM Engine
+try:
+    llm = LocalHuggingFaceEngine("microsoft/DialoGPT-medium")
+    print("✅ Local Hugging Face LLM Engine initialized")
+    
+    # Test connection
+    if llm.test_connection():
+        print("✅ Local Hugging Face model loaded successfully")
+    else:
+        print("⚠️ Local Hugging Face model failed to load, will use Gemini fallback")
+        
+except Exception as e:
+    print(f"⚠️ Failed to initialize Local Hugging Face LLM: {e}")
+    print("🔄 Will use Gemini fallback for all requests")
+    llm = None
 
 # ==== Prompt System ====
 prompt_builder = FinSightPrompts()
@@ -159,8 +158,23 @@ async def ask(request: AskRequest):
         )
         print(f"Prompt length: {len(prompt)}")
 
-        response = llm(prompt, max_tokens=200, stop=["</s>"])["choices"][0]["text"]
-        return {"response": response.strip()}
+        # Try Hugging Face LLM first, fallback to Gemini
+        try:
+            if llm is not None:
+                print("🚀 Generating response with Hugging Face LLM...")
+                response = llm.generate(prompt, max_tokens=200, temperature=0.1)
+                answer = response["choices"][0]["text"].strip()
+                print(f"✅ HF LLM response: {answer[:100]}...")
+                print(f"⏱️ Response time: {response.get('response_time', 'N/A')}s")
+            else:
+                print("🔄 Hugging Face LLM not available, using Gemini fallback!")
+                answer = gemini_fallback(question)
+                    
+        except Exception as e:
+            print(f"\n⚠️ Hugging Face LLM failed: {e}, using Gemini fallback!")
+            answer = gemini_fallback(question)
+
+        return {"response": answer}
 
     except Exception as e:
         import traceback
@@ -181,8 +195,23 @@ async def ask_get(question: str):
             context=context,
             config=PromptConfig()
         )
-        response = llm(prompt, max_tokens=200, stop=["</s>"])["choices"][0]["text"]
-        return {"response": response.strip()}
+        
+        # Try Hugging Face LLM first, fallback to Gemini
+        try:
+            if llm is not None:
+                print("🚀 Generating response with Hugging Face LLM...")
+                response = llm.generate(prompt, max_tokens=200, temperature=0.1)
+                answer = response["choices"][0]["text"].strip()
+                print(f"✅ HF LLM response: {answer[:100]}...")
+            else:
+                print("🔄 Hugging Face LLM not available, using Gemini fallback!")
+                answer = gemini_fallback(question)
+                    
+        except Exception as e:
+            print(f"\n⚠️ Hugging Face LLM failed: {e}, using Gemini fallback!")
+            answer = gemini_fallback(question)
+
+        return {"response": answer}
 
     except Exception as e:
         import traceback
@@ -235,30 +264,20 @@ async def chat_endpoint(request: ChatRequest):
         )
         print(f"Prompt length: {len(prompt)}")
 
-        # Try local LLM first, fallback to Gemini
+        # Try Hugging Face LLM first, fallback to Gemini
         try:
-            print("🤖 Generating response with local LLaMA model...")
-            
-            # Add timeout to prevent hanging
-            import asyncio
-            import concurrent.futures
-            
-            def generate_response():
-                return llm(prompt, max_tokens=200, stop=["</s>"])["choices"][0]["text"]
-            
-            # Run with 30-second timeout
-            with concurrent.futures.ThreadPoolExecutor() as executor:
-                future = executor.submit(generate_response)
-                try:
-                    response = future.result(timeout=30)  # 30 second timeout
-                    answer = response.strip()
-                    print(f"✅ LLaMA response: {answer[:100]}...")
-                except concurrent.futures.TimeoutError:
-                    print("⏰ LLaMA model timed out, using Gemini fallback!")
-                    answer = gemini_fallback(query)
+            if llm is not None:
+                print("🚀 Generating response with Hugging Face LLM...")
+                response = llm.generate(prompt, max_tokens=200, temperature=0.1)
+                answer = response["choices"][0]["text"].strip()
+                print(f"✅ HF LLM response: {answer[:100]}...")
+                print(f"⏱️ Response time: {response.get('response_time', 'N/A')}s")
+            else:
+                print("🔄 Hugging Face LLM not available, using Gemini fallback!")
+                answer = gemini_fallback(query)
                     
         except Exception as e:
-            print(f"\n⚠️ Local LLM failed: {e}, using Gemini fallback!")
+            print(f"\n⚠️ Hugging Face LLM failed: {e}, using Gemini fallback!")
             answer = gemini_fallback(query)
 
         print(f"🎯 Final answer: {answer[:100]}...")
@@ -274,6 +293,18 @@ async def chat_endpoint(request: ChatRequest):
         except:
             return {"answer": "❌ Sorry, I'm having trouble processing your request right now. Please try again."}
 
+
+# ==== Health Check Endpoint ====
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "FinSight Copilot API",
+        "llm_available": llm is not None,
+        "gemini_configured": bool(GEMINI_API_KEY),
+        "faiss_loaded": True
+    }
 
 # ==== Test Gemini Endpoint ====
 @app.get("/test-gemini")
@@ -297,3 +328,9 @@ async def test_gemini():
 
 # ==== Upload Route ====
 app.include_router(upload_router)
+
+# ==== Chat History Route ====
+app.include_router(chat_history_router)
+
+# ==== Trading Route ====
+app.include_router(trading_router)
