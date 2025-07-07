@@ -40,4 +40,9 @@ datasets>=2.14.0
 # Development and testing
 pytest>=7.4.0
 black>=23.0.0
-flake8>=6.0.0 
+flake8>=6.0.0
+
+# Added from the code block
+fastapi
+uvicorn
+llama-cpp-python==0.1.83 
