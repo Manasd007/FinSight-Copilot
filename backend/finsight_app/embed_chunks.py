@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 import pickle
+import pandas as pd
 from sentence_transformers import SentenceTransformer
 from backend.finsight_app.path_utils import DATA_DIR, EMBEDDINGS_DIR
 
@@ -14,10 +15,13 @@ os.makedirs(EMBEDDINGS_DIR, exist_ok=True)
 MODEL_NAME = 'all-MiniLM-L6-v2'
 model = SentenceTransformer(MODEL_NAME)
 
-# Find JSON files
+# Find JSON and CSV files
 json_files = [f for f in os.listdir(DATA_DIR) if f.endswith('_company_info.json') or f.endswith('_financial_data.json')]
+csv_files = [f for f in os.listdir(DATA_DIR) if f.endswith('_stock_data.csv')]
 print("JSON files found:", json_files)
+print("CSV files found:", csv_files)
 json_files.sort()
+csv_files.sort()
 
 texts = []
 file_mapping = []
@@ -32,7 +36,15 @@ for fname in json_files:
         texts.append(content)
         file_mapping.append(fname)
 
-print(f"Generating embeddings for {len(texts)} company JSON files...")
+# Load CSV and extract text
+for fname in csv_files:
+    path = os.path.join(DATA_DIR, fname)
+    df = pd.read_csv(path)
+    content = df.to_string()
+    texts.append(content)
+    file_mapping.append(fname)
+
+print(f"Generating embeddings for {len(texts)} company JSON/CSV files...")
 embeddings = model.encode(texts, show_progress_bar=True, batch_size=32)
 
 # Save embeddings

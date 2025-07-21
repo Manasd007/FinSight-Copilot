@@ -5,7 +5,7 @@ from backend.finsight_app.path_utils import get_faiss_index_dir, EMBEDDINGS_DIR
 
 EMBEDDINGS_PATH = get_faiss_index_dir()
 
-embeddings_file = os.path.join(EMBEDDINGS_DIR, 'chunk_embeddings.npy')
+embeddings_file = os.path.join(EMBEDDINGS_DIR, 'company_embeddings.npy')
 faiss_index_dir = EMBEDDINGS_PATH
 faiss_index_file = os.path.join(faiss_index_dir, 'index.faiss')
 

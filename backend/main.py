@@ -14,6 +14,9 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from llama_cpp import Llama
 from sentence_transformers import CrossEncoder
 import google.generativeai as genai
+import requests
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
 from finsight_app.prompts import FinSightPrompts, PromptType, PromptConfig
 from finsight_app.rag_utils import RetrievalSystem
@@ -71,7 +74,7 @@ prompt_builder = FinSightPrompts()
 reranker = CrossEncoder("cross-encoder/qnli-distilroberta-base")
 
 # ==== Gemini API Fallback ====
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "YOUR_GEMINI_API_KEY"
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
     print(f"✅ Gemini API key configured: {GEMINI_API_KEY[:10]}...")
@@ -90,10 +93,12 @@ def gemini_fallback(question: str):
         if res and res.text:
             answer = res.text.strip()
             print(f"✅ Gemini response: {answer[:100]}...")
+            if not answer:
+                return "Sorry, no analysis is available for this stock at the moment. Please try a different ticker or try again later."
             return answer
         else:
             print("❌ Gemini returned empty response")
-            return "❌ Sorry, I couldn't generate a response. Please try again."
+            return "Sorry, no analysis is available for this stock at the moment. Please try a different ticker or try again later."
             
     except Exception as e:
         print(f"❌ Gemini API error: {str(e)}")
@@ -148,7 +153,7 @@ async def ask(request: AskRequest):
 
         if not context.strip() or ("apple" in context.lower() and "startup" in question.lower()):
             print("\n⚡ Using Gemini fallback!")
-            return {"response": gemini_fallback(question)}
+            return {"answer": gemini_fallback(question)}
 
         prompt = prompt_builder.build_prompt(
             PromptType.RAG_FINANCIAL,
@@ -169,12 +174,15 @@ async def ask(request: AskRequest):
             else:
                 print("🔄 Hugging Face LLM not available, using Gemini fallback!")
                 answer = gemini_fallback(question)
-                    
         except Exception as e:
             print(f"\n⚠️ Hugging Face LLM failed: {e}, using Gemini fallback!")
             answer = gemini_fallback(question)
 
-        return {"response": answer}
+        # Fallback if answer is empty or just whitespace
+        if not answer or not answer.strip() or answer.strip() in ["...", "❌", "❌ Sorry, I couldn't generate a response. Please try again."]:
+            answer = "Sorry, no analysis is available for this stock at the moment. Please try a different ticker or try again later."
+
+        return {"answer": answer}
 
     except Exception as e:
         import traceback
@@ -253,6 +261,8 @@ async def chat_endpoint(request: ChatRequest):
         if not context.strip():
             print("\n⚡ No context found, using Gemini fallback!")
             answer = gemini_fallback(query)
+            if not answer or not answer.strip():
+                answer = "Sorry, no analysis is available for this stock at the moment. Please try a different ticker or try again later."
             return {"answer": answer}
 
         # Build prompt and generate response
@@ -264,23 +274,26 @@ async def chat_endpoint(request: ChatRequest):
         )
         print(f"Prompt length: {len(prompt)}")
 
-        # Try Hugging Face LLM first, fallback to Gemini
+        # Try Hugging Face LLM first, fallback to Gemini if answer is empty or invalid
         try:
             if llm is not None:
                 print("🚀 Generating response with Hugging Face LLM...")
                 response = llm.generate(prompt, max_tokens=200, temperature=0.1)
                 answer = response["choices"][0]["text"].strip()
-                print(f"✅ HF LLM response: {answer[:100]}...")
-                print(f"⏱️ Response time: {response.get('response_time', 'N/A')}s")
+                if not answer or not answer.strip() or answer.strip() in ["...", "❌", "❌ Sorry, I couldn't generate a response. Please try again."]:
+                    print("⚡ HF LLM returned empty or invalid answer, using Gemini fallback!")
+                    answer = gemini_fallback(query)
             else:
                 print("🔄 Hugging Face LLM not available, using Gemini fallback!")
                 answer = gemini_fallback(query)
-                    
         except Exception as e:
             print(f"\n⚠️ Hugging Face LLM failed: {e}, using Gemini fallback!")
             answer = gemini_fallback(query)
 
         print(f"🎯 Final answer: {answer[:100]}...")
+        print(f"Returning answer to frontend: {answer}")
+        if not answer or not answer.strip():
+            answer = "Sorry, no analysis is available for this stock at the moment. Please try a different ticker or try again later."
         return {"answer": answer}
 
     except Exception as e:
@@ -334,6 +347,19 @@ app.include_router(chat_history_router)
 
 # ==== Trading Route ====
 app.include_router(trading_router)
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or "YOUR_GEMINI_API_KEY"
+GEMINI_MODEL = "gemini-1.5-flash"  # Use the correct Gemini model
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
+
+@app.post("/api/gemini")
+async def gemini_proxy(req: Request):
+    body = await req.json()
+    try:
+        response = requests.post(GEMINI_API_URL, json=body)
+        return JSONResponse(content=response.json(), status_code=response.status_code)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
