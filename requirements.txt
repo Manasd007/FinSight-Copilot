@@ -52,3 +52,4 @@ google-generativeai
 scikit-learn
 sqlalchemy
 py2neo 
+PyMuPDF 
