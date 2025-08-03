@@ -71,6 +71,7 @@ data/*.json
 embeddings/
 processed_data/
 models/
+data/
 
 # Temporary files
 *.tmp
